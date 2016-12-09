@@ -1,0 +1,21 @@
+{
+    "collab_server" : "",
+    "contents" : "library(aod)\nlibrary(ggplot2)\nlibrary(Rcpp)\n\n## Comment added by Randy\n## added a second comment\n## third branch\n\nadverbs = read.csv(\"C:/Users/anobs/Documents/GitHub/MSDS6372_Project3/data/booksDF.csv\",header=TRUE)\nhead(adverbs)\n\nsummary(adverbs)\nsapply(adverbs, sd)\n\nadverblogit <- glm(Author ~ Per_Small + \n                       Per_Medium + \n                       Per_Large + \n                       already + \n                       together + \n                       hollow + \n                       little + \n                       suddenly + \n                       nothing + \n                       especially + \n                       light + \n                       alone + \n                       above + \n                       though + \n                       closed + \n                       lightly + \n                       forth + \n                       large + \n                       least + \n                       beneath + \n                       under + \n                       great + \n                       nearly + \n                       through + \n                       quite + \n                       always + \n                       others + \n                       first + \n                       below + \n                       where + \n                       still + \n                       slowly + \n                       strange + \n                       these + \n                       immediately + \n                       fresh + \n                       there + \n                       evening + \n                       however + \n                       beside + \n                       after + \n                       parts + \n                       sweet + \n                       early + \n                       something + \n                       latter + \n                       along + \n                       those + \n                       small + \n                       beyond + \n                       particularly + \n                       right + \n                       since + \n                       extremely + \n                       stranger + \n                       almost + \n                       between + \n                       aside + \n                       scarcely + \n                       stately + \n                       therefore + \n                       better + \n                       close + \n                       black + \n                       again + \n                       before + \n                       other + \n                       about + \n                       rather + \n                       sound + \n                       rising + \n                       without + \n                       longer + \n                       certainly + \n                       never + \n                       either  \n                       , data = adverbs, family = \"binomial\")\n\nsummary(adverblogit)\n\n## Confidence intervals using profiled log-likelihood\nconfint(adverblogit)\n\n## Confidence intervals using standard errors\nconfint.default(adverblogit)\n\n## odds ratios\nexp(coef(adverblogit))\n\n## odds ratios and 95% CI\nexp(cbind(OR = coef(adverblogit), confint(adverblogit)))\n\n## http://www.ats.ucla.edu/stat/r/dae/logit.htm\n",
+    "created" : 1480996983803.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "2758912426",
+    "id" : "36F9E78B",
+    "lastKnownWriteTime" : 1481000211,
+    "last_content_update" : 1481000211413,
+    "path" : "~/GitHub/MSDS6372_Project3/Analysis/Randy Code.R",
+    "project_path" : "Randy Code.R",
+    "properties" : {
+        "tempName" : "Untitled1"
+    },
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}
