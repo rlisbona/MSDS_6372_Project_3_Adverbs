@@ -1,93 +1,122 @@
+
+#install.packages('tibble')
+library(tibble)
+library(plyr)
+library(dplyr)
+
+library(doBy)
 library(aod)
 library(ggplot2)
 library(Rcpp)
+library(mclust)
+#install.packages('colorspace')
+
 
 ## Comment added by Randy
 ## added a second comment
 ## third branch
+## 
+## 
+## 
 
-adverbs = read.csv("C:/Users/anobs/Documents/GitHub/MSDS6372_Project3/data/booksDF.csv",header=TRUE)
+adverbs = read.csv("C:/Users/anobs/Documents/GitHub/MSDS_6372_Project_3_Adverbs/data/booksDF2.csv",header=TRUE)
+adverbs2 <-column_to_rownames(adverbs,var='AuthorTitle')
+
 head(adverbs)
 
 summary(adverbs)
 sapply(adverbs, sd)
 
-adverblogit <- glm(Author ~ Per_Small + 
-                       Per_Medium + 
-                       Per_Large + 
-                       already + 
-                       together + 
-                       hollow + 
-                       little + 
-                       suddenly + 
-                       nothing + 
-                       especially + 
-                       light + 
-                       alone + 
-                       above + 
-                       though + 
-                       closed + 
-                       lightly + 
-                       forth + 
-                       large + 
-                       least + 
-                       beneath + 
-                       under + 
-                       great + 
-                       nearly + 
-                       through + 
-                       quite + 
-                       always + 
-                       others + 
-                       first + 
-                       below + 
-                       where + 
-                       still + 
-                       slowly + 
-                       strange + 
-                       these + 
-                       immediately + 
-                       fresh + 
-                       there + 
-                       evening + 
-                       however + 
-                       beside + 
-                       after + 
-                       parts + 
-                       sweet + 
-                       early + 
-                       something + 
-                       latter + 
-                       along + 
-                       those + 
-                       small + 
-                       beyond + 
-                       particularly + 
-                       right + 
-                       since + 
-                       extremely + 
-                       stranger + 
-                       almost + 
-                       between + 
-                       aside + 
-                       scarcely + 
-                       stately + 
-                       therefore + 
-                       better + 
-                       close + 
-                       black + 
-                       again + 
-                       before + 
-                       other + 
-                       about + 
-                       rather + 
-                       sound + 
-                       rising + 
-                       without + 
-                       longer + 
-                       certainly + 
-                       never + 
-                       either  
+
+'Per_Small',
+'Per_Medium',
+'Per_Large',
+
+X.quanti <- adverbs[,c(
+                            'little',
+                            'without',
+                            'other',
+                            'nothing',
+                            'again',
+                            'before',
+                            'these',
+                            'least',
+                            'about',
+                            'those',
+                            'though',
+                            'after',
+                            'through',
+                            'together',
+                            'where',
+                            'under',
+                            'never',
+                            'right',
+                            'first',
+                            'always',
+                            'great',
+                            'there',
+                            'others',
+                            'still')]
+
+X.quali <- adverbs[,c(1,2)]
+
+X.quanti
+X.quali
+
+tree <- hclustvar(X.quanti)
+tree <- hclustvar(X.quanti, X.quali)
+par(mfrow = c(1, 2))
+plot(tree)
+stab <- stability(tree,B=100,graph=TRUE)
+plot(stab)
+
+# shows row numbers
+clusters <- hclust(dist(adverbs[,3:29]))
+plot(clusters)
+
+# shows row names
+clusters2 <- hclust(dist(adverbs2[,3:29]))
+plot(clusters2)
+
+
+group_by(adverbs2,Author) %>%
+  summarise(mean=mean)
+
+aggregate(x=adverbs, by=c('Author'),FUN=mean,na.rm=TRUE)
+?aggregate
+fit <- 
+
+
+
+adverblogit <- glm(Author ~ 
+                     Per_Small +
+                     Per_Medium +
+                     Per_Large +
+                     little +
+                     without +
+                     other +
+                     nothing +
+                     again +
+                     before +
+                     these +
+                     least +
+                     about +
+                     those +
+                     though +
+                     after +
+                     through +
+                     together +
+                     where +
+                     under +
+                     never +
+                     right +
+                     first +
+                     always +
+                     great +
+                     there +
+                     others +
+                     still 
+                     
                        , data = adverbs, family = "binomial")
 
 summary(adverblogit)
