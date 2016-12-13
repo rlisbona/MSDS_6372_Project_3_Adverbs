@@ -1,0 +1,71 @@
+---
+title: "Adverbs"
+author: "Randy Lisbona"
+date: "December 12, 2016"
+output:
+
+  html_document: default
+classoption: landscape
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(plyr)
+library(dplyr)
+require(nnet)
+require(caret)
+require(gridExtra)
+require(xtable)
+require(corrplot)
+require(car)
+```
+
+## Multinomial Logistic Regression for classification
+
+
+
+```{r data_preperation}
+dirname <- c('C:/Users/anobs/Documents/GitHub/MSDS_6372_Project_3_Adverbs/data/')
+inputFile <- c('booksDF2.csv')
+adverbs = read.csv(paste(dirname,inputFile, sep=''),header=TRUE)
+str(adverbs)
+
+adverbs[is.na(adverbs)] <- 0                                #Set any missing values to 0
+adverbs$recnum <- as.numeric(rownames(adverbs))             #Add a rownumber field  
+adverbs$AuthorID_Factor <- factor(adverbs$AuthorID)         #Create a factor variable for AuthorID     
+adverbs$out <- relevel(adverbs$AuthorID_Factor, ref ='1')   #Create a referance variable using authorID=1      
+
+# Create a partition by Author for training dataset,  This function seems to make sure we get one of each author in the training file
+# even with a very low percent, it will still pick at least one record per Author
+(TrainIndex <- createDataPartition(adverbs$Author,p=0.6, list = F))
+
+# Create test and training datasets
+(train <- adverbs[TrainIndex,])
+(test <- adverbs[-TrainIndex,])
+
+# Write an output file wtih the Authors and Books in the test dataset
+(BooksInTestset <- as.data.frame(test[,c('recnum','Author', 'AuthorID','Title')]))
+(outfile <- paste(dirname,'BooksInTestSet.csv', sep=''))
+write.csv(BooksInTestset,file = outfile , row.names = TRUE)
+
+str(train)
+str(test)  
+
+```
+
+## Model
+
+
+
+```{r Model, echo=FALSE}
+mymodel <- multinom(out~ little+ without+  other+ nothing+ again +before + these + least+  about+  those +though + after+ through+ together + where+  under + never+  right, data = train)
+class(mymodel)
+summary(mymodel, Wald = TRUE)
+exp(coef(mymodel))
+
+pred = predict(mymodel, newdata=test)
+accuracy <- table(pred, test[,"Author"])
+
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.

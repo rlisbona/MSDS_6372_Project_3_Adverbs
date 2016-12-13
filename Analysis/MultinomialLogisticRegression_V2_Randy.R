@@ -16,8 +16,11 @@ require(caret)
 require(gridExtra)
 require(xtable)
 require(corrplot)
-install.packages('corrplot')
 require(car)
+install.packages('broom')
+library(broom)
+install.packages('AER')
+library(AER)
 
 # this is basically from this video
 #   https://www.youtube.com/watch?v=fDjKa7yWk1U
@@ -30,6 +33,7 @@ inputFile <- c('booksDF2.csv')
 adverbs = read.csv(paste(dirname,inputFile, sep=''),header=TRUE)
 str(adverbs)
 
+
 adverbs[is.na(adverbs)] <- 0                                #Set any missing values to 0
 adverbs$recnum <- as.numeric(rownames(adverbs))             #Add a rownumber field  
 adverbs$AuthorID_Factor <- factor(adverbs$AuthorID)         #Create a factor variable for AuthorID     
@@ -37,14 +41,29 @@ adverbs$out <- relevel(adverbs$AuthorID_Factor, ref ='1')   #Create a referance 
 
 # Create a partition by Author for training dataset,  This function seems to make sure we get one of each author in the training file
 # even with a very low percent, it will still pick at least one record per Author
-(TrainIndex <- createDataPartition(adverbs$Author,p=0.6, list = F))
+
+
+TestSize <- 4
+BookIds <- seq(from=1, to = max(adverbs$recnum), by=1)
+(BookIdsInTestset <- sample(BookIds, size = TestSize, replace = FALSE))
+
+#Print the books in the test dataset and write a .csv for use in Tableau
+(BooksInTestset <- as.data.frame(c(adverbs[BookIdsInTestset,c('recnum','Author', 'AuthorID','Title')])))
+BooksInTestset <- BooksInTestset[order(BooksInTestset$AuthorID),]
+
+train <- adverbs[-BookIdsInTestset,]
+test <- adverbs[BookIdsInTestset,]
 
 # Create test and training datasets
-(train <- adverbs[TrainIndex,])
-(test <- adverbs[-TrainIndex,])
+#(TrainIndex <- createDataPartition(adverbs$Author,p=0.7, list = F))
+#train <- adverbs[TrainIndex,]
+#test <- adverbs[-TrainIndex,]
+
+# Books in test dataset
+test[,c('recnum','Author','Title','AuthorID')]
 
 # Write an output file wtih the Authors and Books in the test dataset
-(BooksInTestset <- as.data.frame(adverbs.test[,c('recnum','Author', 'AuthorID','Title')]))
+(BooksInTestset <- as.data.frame(test[,c('recnum','Author', 'AuthorID','Title')]))
 (outfile <- paste(dirname,'BooksInTestSet.csv', sep=''))
 write.csv(BooksInTestset,file = outfile , row.names = TRUE)
 
@@ -52,36 +71,105 @@ str(train)
 str(test)  
 
 
+
+
 # This section is different models, run one then skip to summary()
-#mymodel <- multinom(out~ Per_Small+Per_Medium+Per_Large + little+ without+  other+ nothing+ again +before + these + least+  about+  those +though + after+ through+ together + where+  under + never+  right, data = train)
+
+# Model statement
+mymodel <- multinom(out~ Per_Small+Per_Medium+Per_Large+little+without+other+nothing+again+before+these+
+                    least+about+those+though+after+through+together+where+under+never+right, data = train)
+
+mymodel$AIC # returns the AIC of the model
+mymodel$deviance # returns the deviance of the model
+
 mymodel <- multinom(out~ little+ without+  other+ nothing+ again +before + these + least+  about+  those +though + after+ through+ together + where+  under + never+  right, data = train)
+mymodel$AIC # returns the AIC of the model
+mymodel$deviance # returns the deviance of the model
+
 mymodel <- multinom(out~ little+ without+  other+ nothing+ again +before + these + least+  about+  those , data = train)
+mymodel$AIC # returns the AIC of the model
+mymodel$deviance # returns the deviance of the model
+
 mymodel <- multinom(out~ about + little + these +  again +  other + right +those , data = train)
+mymodel$AIC # returns the AIC of the model
+mymodel$deviance # returns the deviance of the model
+
 mymodel <- multinom(out~ about + little + these +  again +  other + right  , data = train)
+mymodel$AIC # returns the AIC of the model
+mymodel$deviance # returns the deviance of the model
+
 mymodel <- multinom(out~ about + little + these +  again +  other  , data = train)
+mymodel$AIC # returns the AIC of the model
+mymodel$deviance # returns the deviance of the model
+
 mymodel <- multinom(out~ about + little + these +  again , data = train)
+mymodel$AIC # returns the AIC of the model
+mymodel$deviance # returns the deviance of the model
+
 mymodel <- multinom(out~ little+ without+ other  , data = train)
+mymodel$AIC # returns the AIC of the model
+mymodel$deviance # returns the deviance of the model
+
+
+mymodel$call
+-order(varImp(mymodel,value = "rss"))
+
 
 class(mymodel)
+str(mymodel)
 summary(mymodel, Wald = TRUE)
 exp(coef(mymodel))
+tidy(mymodel)
+glance(mymodel)
 
-pred = predict(mymodel, newdata=test)
-accuracy <- table(pred, test[,"Author"])
-# Calculate prediction accuracy
+str(summary(mymodel))
+
+mymodel$AIC # returns the AIC of the model
+mymodel$deviance # returns the deviance of the model
+
+predUsingTrain = predict(mymodel, newdata=train)
+cbind(Predicted = predUsingTrain, 'Actual Author' =train[,"AuthorID"])
+
+# Calculate prediction accuracy on Training data
+(accuracy <- table(predUsingTrain, train[,"AuthorID"]))
 sum(diag(accuracy))/sum(accuracy)
 
-#anova(mymodel, mymodel2, test = 'Chisq')
+pred = predict(mymodel, newdata=test)
+cbind(Predicted = pred, 'Actual Author' =test[,"Author"])
 
+# Calculate prediction accuracy on Test data
+(accuracy <- table(pred, test[,"Author"]))
+sum(diag(accuracy))/sum(accuracy)
+
+
+(ConfidenceMatrix <- table(predict(mymodel),train$AuthorID))
+
+
+
+
+
+#(ConfidenceMatrix <- table(predict(mymodel),train$AuthorID))
+(CheckPredictions <- predict(mymodel, type = "class", newdata =test))
+
+varImp(mymodel,value = "rss")
+varImp(mymodel,value ='gcv')
+varImp(mymodel,value ="nsubsets")
 
 mostImportantVariables <- varImp(mymodel,value = "rss")
 mostImportantVariables <- varImp(mymodel)
 mostImportantVariables$Variables <- row.names(mostImportantVariables)
 (mostImportantVariables <- mostImportantVariables[order(-mostImportantVariables$Overall),])
 
+summary(mymodel)$coefficients
+summary(mymodel)$standard.errors
+coef(mymodel)
 z <- summary(mymodel)$coefficients/summary(mymodel)$standard.errors
 p <- (1-pnorm(abs(z),0,1)) *2
 p
+
+# This is supposed to be a WALD's test in package AER
+coeftest(mymodel)
+
 
 mymodel2 <- multinom(out~ about + little + these + other + right + again + those + never  , data = train)
 
@@ -124,7 +212,9 @@ class(mymodel)
 summary(mymodel)  # getting NaNs here, some sites say don't worry about them, not sure about this
 
 #predict(mymodel,train)  #this is a list of predictions, hard to read so skip it
-#predict(mymodel,train,type ="prob")  #This gives probabilities, kind of hard to read
+predict(mymodel,test,type ="probs")  #This gives probabilities, kind of hard to read
+predict(mymodel,test,type ="class")  #This gives probabilities, kind of hard to read
+
 summary(mymodel)
 predict(mymodel)
 options(digits=4)
