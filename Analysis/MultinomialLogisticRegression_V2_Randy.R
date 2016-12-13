@@ -1,31 +1,8 @@
 
-#install.packages('tibble')
-#library(tibble)
-#library(doBy)
-#library(aod)
-#library(ggplot2)
-#library(Rcpp)
-#library(mclust)
-#require(colorspace)
-#require(sampling)
-#require(MASS)
 library(plyr)
 library(dplyr)
 require(nnet)
 require(caret)
-require(gridExtra)
-require(xtable)
-require(corrplot)
-require(car)
-install.packages('broom')
-library(broom)
-install.packages('AER')
-library(AER)
-
-# this is basically from this video
-#   https://www.youtube.com/watch?v=fDjKa7yWk1U
-
-###Note that I added a few extra columns to booksDF.  The only extra one currently used is the AuthorID and rndselect used to pick the 2nd book for training data set.
 
 # Read input file
 dirname <- c('C:/Users/anobs/Documents/GitHub/MSDS_6372_Project_3_Adverbs/data/')
@@ -33,28 +10,26 @@ inputFile <- c('booksDF2.csv')
 adverbs = read.csv(paste(dirname,inputFile, sep=''),header=TRUE)
 str(adverbs)
 
-
 adverbs[is.na(adverbs)] <- 0                                #Set any missing values to 0
 adverbs$recnum <- as.numeric(rownames(adverbs))             #Add a rownumber field  
 adverbs$AuthorID_Factor <- factor(adverbs$AuthorID)         #Create a factor variable for AuthorID     
 adverbs$out <- relevel(adverbs$AuthorID_Factor, ref ='1')   #Create a referance variable using authorID=1      
 
-# Create a partition by Author for training dataset,  This function seems to make sure we get one of each author in the training file
-# even with a very low percent, it will still pick at least one record per Author
 
-
+# Set the sample size for test dataset
 TestSize <- 4
 BookIds <- seq(from=1, to = max(adverbs$recnum), by=1)
 (BookIdsInTestset <- sample(BookIds, size = TestSize, replace = FALSE))
 
-#Print the books in the test dataset and write a .csv for use in Tableau
+#Print the books in the test dataset 
 (BooksInTestset <- as.data.frame(c(adverbs[BookIdsInTestset,c('recnum','Author', 'AuthorID','Title')])))
 BooksInTestset <- BooksInTestset[order(BooksInTestset$AuthorID),]
 
+#Create train and test datasets
 train <- adverbs[-BookIdsInTestset,]
 test <- adverbs[BookIdsInTestset,]
 
-# Create test and training datasets
+# Create test and training datasets----------Interesting function but picked too many for test and model accuracy went down
 #(TrainIndex <- createDataPartition(adverbs$Author,p=0.7, list = F))
 #train <- adverbs[TrainIndex,]
 #test <- adverbs[-TrainIndex,]
@@ -62,27 +37,30 @@ test <- adverbs[BookIdsInTestset,]
 # Books in test dataset
 test[,c('recnum','Author','Title','AuthorID')]
 
-# Write an output file wtih the Authors and Books in the test dataset
+# Write an output file with the Authors and Books in the test dataset
 (BooksInTestset <- as.data.frame(test[,c('recnum','Author', 'AuthorID','Title')]))
 (outfile <- paste(dirname,'BooksInTestSet.csv', sep=''))
 write.csv(BooksInTestset,file = outfile , row.names = TRUE)
 
+#info on train and test
 str(train)
 str(test)  
+head(test)
 
-
-
-
-# This section is different models, run one then skip to summary()
+# This section shows various models, run one then skip to summary()
 
 # Model statement
 mymodel <- multinom(out~ Per_Small+Per_Medium+Per_Large+little+without+other+nothing+again+before+these+
-                    least+about+those+though+after+through+together+where+under+never+right, data = train)
+                    least+about+those+though+after+through+together+where+under+never+right, data = adverbs, HESS= TRUE)
+mymodel <- multinom(out~ without+other+nothing+again+before+these+
+                      least+about+those+though+after+through+together+where+under, data = train, HESS= TRUE)
+mymodel <- multinom(out~ without+other+nothing+again+before+these+
+                      about+those+though+after+where+under, data = train,maxit=1000)
 
 mymodel$AIC # returns the AIC of the model
 mymodel$deviance # returns the deviance of the model
 
-mymodel <- multinom(out~ little+ without+  other+ nothing+ again +before + these + least+  about+  those +though + after+ through+ together + where+  under + never+  right, data = train)
+mymodel <- multinom(out~ little+ without+  other+ nothing+ again +before + these + least+  about+  those +though + after+ through+ together + where+  under + never+  right, data = adverbs)
 mymodel$AIC # returns the AIC of the model
 mymodel$deviance # returns the deviance of the model
 
@@ -106,152 +84,65 @@ mymodel <- multinom(out~ about + little + these +  again , data = train)
 mymodel$AIC # returns the AIC of the model
 mymodel$deviance # returns the deviance of the model
 
-mymodel <- multinom(out~ little+ without+ other  , data = train)
+mymodel <- multinom(out~ little+ without+ other+nothing+again  , data = train)
 mymodel$AIC # returns the AIC of the model
 mymodel$deviance # returns the deviance of the model
 
 
-mymodel$call
--order(varImp(mymodel,value = "rss"))
+mymodel$call   #returns the current model statement
+summary(mymodel, Wald = TRUE) # getting NaNs here, some sites say don't worry about them, not sure about this
 
+exp(coef(mymodel))  #didn't end up using the probabilities as we had too many tables to talk about
 
-class(mymodel)
-str(mymodel)
-summary(mymodel, Wald = TRUE)
-exp(coef(mymodel))
-tidy(mymodel)
-glance(mymodel)
-
-str(summary(mymodel))
-
-mymodel$AIC # returns the AIC of the model
-mymodel$deviance # returns the deviance of the model
-
+#check accuracy of model against itself
 predUsingTrain = predict(mymodel, newdata=train)
 cbind(Predicted = predUsingTrain, 'Actual Author' =train[,"AuthorID"])
-
 # Calculate prediction accuracy on Training data
 (accuracy <- table(predUsingTrain, train[,"AuthorID"]))
 sum(diag(accuracy))/sum(accuracy)
 
+#check accuracy of model using test dataset
 pred = predict(mymodel, newdata=test)
 cbind(Predicted = pred, 'Actual Author' =test[,"Author"])
-
 # Calculate prediction accuracy on Test data
 (accuracy <- table(pred, test[,"Author"]))
 sum(diag(accuracy))/sum(accuracy)
 
-
-(ConfidenceMatrix <- table(predict(mymodel),train$AuthorID))
-
-
-
-
-
-#(ConfidenceMatrix <- table(predict(mymodel),train$AuthorID))
-(CheckPredictions <- predict(mymodel, type = "class", newdata =test))
-
+# options for varimp all return the same results, this doesn't make sense
 varImp(mymodel,value = "rss")
 varImp(mymodel,value ='gcv')
 varImp(mymodel,value ="nsubsets")
 
+# Rank the coeficients in the model, not sure how to determine a cuttoff using this function.
 mostImportantVariables <- varImp(mymodel,value = "rss")
 mostImportantVariables <- varImp(mymodel)
 mostImportantVariables$Variables <- row.names(mostImportantVariables)
 (mostImportantVariables <- mostImportantVariables[order(-mostImportantVariables$Overall),])
 
+#various ways to get bits and pieces out of the summary()
 summary(mymodel)$coefficients
 summary(mymodel)$standard.errors
 coef(mymodel)
+names(coef(mymodel))
+predictors(mymodel)
+class(mymodel)
+
+#calculate the WALD's test - 2 tailed p test
 z <- summary(mymodel)$coefficients/summary(mymodel)$standard.errors
 p <- (1-pnorm(abs(z),0,1)) *2
 p
 
-# This is supposed to be a WALD's test in package AER
-coeftest(mymodel)
-
-
-mymodel2 <- multinom(out~ about + little + these + other + right + again + those + never  , data = train)
-
-
-(ConfidenceMatrix <- table(predict(mymodel2),train$AuthorID))
-(CheckPredictions <- predict(mymodel2, type = "class", newdata =test))
-summary(mymodel2)
-
-mostImportantVariables2 <- varImp(mymodel2,value = "rss")
-mostImportantVariables2 <- varImp(mymodel2)
-mostImportantVariables2$Variables <- row.names(mostImportantVariables2)
-(mostImportantVariables2 <- mostImportantVariables2[order(-mostImportantVariables2$Overall),])
-
-z <- summary(mymodel2)$coefficients/summary(mymodel2)$standard.errors
-p <- (1-pnorm(abs(z),0,1)) *2
-p
 
 # extract the coefficients and update external file
 as.data.frame(coef(mymodel))
 (outfile <- paste(dirname,'SummaryModel.csv', sep=''))
 write.csv(as.data.frame(coef(mymodel)),file = outfile , row.names = TRUE)
 
-M <- cor(train[,6:32])
-corrplot(M, method='circle')
 
-# This produces a table of p values showing significance for each adverb predicting a given authorID.  Need to figure out how to find minimal number of best predicting adverbs
-z <- summary(mymodel)$coefficients/summary(mymodel)$standard.errors
-p <- (1-pnorm(abs(z),0,1)) *2
-p
-exp(coef(mymodel))
-
-
-
-str(summary(mymodel))
-row.names(coef(mymodel))
-
-names(coef(mymodel))
-predictors(mymodel)
-class(mymodel)
-summary(mymodel)  # getting NaNs here, some sites say don't worry about them, not sure about this
-
-#predict(mymodel,train)  #this is a list of predictions, hard to read so skip it
-predict(mymodel,test,type ="probs")  #This gives probabilities, kind of hard to read
-predict(mymodel,test,type ="class")  #This gives probabilities, kind of hard to read
-
-summary(mymodel)
-predict(mymodel)
-options(digits=4)
-
-(CheckPredictions <- predict(mymodel, type = "class", newdata =test))
-
-
-(ConfidenceMatrix <- table(predict(mymodel),train$AuthorID))
-ConfidenceMatrix <- table(predict(mymodel),train$AuthorID_Factor)
-# This creates a matrix that shows the predicted author vs the actual author
-# Perfect match is when the number of books by the author is in the intersection of predicted vs actual authorID
-#                          row variable     column variable
-
-(misclassificationpcterror <- 1-sum(diag(ConfidenceMatrix))/sum(ConfidenceMatrix))
-
-
-
-varImp(mymodel,value = "rss")
-varImp(mymodel,value = "pls")
-mostImportantVariables <- varImp(mymodel,value = "rss")
-mostImportantVariables <- varImp(mymodel)
-mostImportantVariables$Variables <- row.names(mostImportantVariables)
-(mostImportantVariables <- mostImportantVariables[order(-mostImportantVariables$Overall),])
-print(head(mostImportantVariables))
-
-# having trouble getting a plot to work
-# 
-plot(mostImportantVariables)
-# 
-g <-plot(Y=mostImportantVariables$Overall,main = 'Variable Importance Plot', xlab = 'x', ylab = 'y')
-g + axis(side = 2,1:length(mostImportantVariables$Variables),labels =mostImportantVariables$Variables)
-g
-#par(las=2)
-barplot(mostImportantVariables$Overall,horiz=TRUE,names.arg=mostImportantVariables$Variables)
-
-  
-
+##########################################################################################################
+##########################################################################################################
+####################### Extra code keep it in case we need it#############################################
+##########################################################################################################
 
 # https://www.youtube.com/watch?v=qkivJzjyHoA&t=6s
 # from ordinal logistic regression video, doesn't seem to work here the same way
@@ -260,14 +151,6 @@ p <- pnorm(abs(ctable[, 't value']), lower.tail = FALSE) *2
 (ctable <- cbind(ctable, 'p value' = p))
 
 
-
-postResample(vehiclesTest$cylinders,preds2)
-
-
-##########################################################################################################
-##########################################################################################################
-##########################################################################################################
-##########################################################################################################
 #adverbs = read.csv("C:/Users/anobs/Documents/GitHub/MSDS_6372_Project_3_Adverbs/data/booksDF2.csv",header=TRUE)
 #adverbs = read.csv("C:/Users/anobs/Documents/GitHub/MSDS_6372_Project_3_Adverbs/data/booksDF2normalized.csv",header=TRUE)
 
